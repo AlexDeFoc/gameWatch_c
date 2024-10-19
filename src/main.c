@@ -1,29 +1,34 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
+#include <stdlib.h>
 #include <threads.h>
 
-struct item {
-    char name[50];
-    int time;
-};
+#define MENU_OPTIONS 4
+#define AUTO_SAVE_MINUTES 5
+#define MAX_TITLE_LENGHT 50
 
-void print_menu_items() {
-    printf("1. List\n");
-    printf("2. Start\n");
-    printf("3. New\n");
-    printf("4. Remove\n");
+void print_menu_options() {
+    char *menu_items[MENU_OPTIONS] = {
+        "List",
+        "Start",
+        "New",
+        "Remove"
+    };
+
+    for (int i = 0; i < MENU_OPTIONS; i++) {
+        printf("%d. %s\n", i+1, menu_items[i]);
+    }
+
     printf("-> ");
 }
 
-void get_user_menu_input(int *container, int max) {
+void get_user_menu_input(int *container) {
     int ch;
     while (1) {
         ch = getc(stdin);
 
         while (getc(stdin) != '\n'); // flush
 
-        if (ch >= '1' && ch <= max + '0') {
+        if (ch >= '1' && ch <= MENU_OPTIONS + '0') {
             *container = ch - '0'; // convert ascii to int
             break;
         } else {
@@ -32,14 +37,14 @@ void get_user_menu_input(int *container, int max) {
     }
 }
 
-void new_menu(char **name_buf, int *lenght) {
+void get_title_name(char **name_buf, int *lenght) {
     printf("Enter name: ");
 
-    int ch;
+    int ch = 0;
     int i = 0;
     while (1) {
         ch = getc(stdin);
-        if (ch == '\n' || ch < 0) break;
+        if (ch < 0 || ch == '\n') break;
 
         (*name_buf)[i] = (char)ch;
         i++;
@@ -50,10 +55,8 @@ void new_menu(char **name_buf, int *lenght) {
 }
 
 int main() {
-    struct item dummy_item = {
-        .name = "",
-        .time = 0
-    };
+    char title_buffer[MAX_TITLE_LENGHT] = {0};
+    int time_buffer = 0;
 
     enum menu_opts {
         List = 1, Start, Stop, New, Remove
@@ -69,7 +72,7 @@ int main() {
     const char *ITEM_FORMAT_IMPORT = "(%[^,], %d)\n";
 
     int menu_ui = 0;
-    char *name_buffer = malloc(50 * sizeof(char));
+    char *name_buffer = malloc(MAX_TITLE_LENGHT * sizeof(char));
     int name_lenght = 0;
     if (name_buffer == NULL) {
         printf("No memory!\n");
@@ -77,42 +80,36 @@ int main() {
     }
 
     // Start
-    print_menu_items();
-    get_user_menu_input(&menu_ui, 4); // Menu options
+    print_menu_options();
+    get_user_menu_input(&menu_ui);
 
     if (menu_ui == List) {
         fopen_s(&record, record_path, "r");
 
         if (record == NULL) {
-            printf("Failed to open file!\n");
+            printf("No record file found!\n");
             return 1;
         }
 
-        int i = 0;
+        int i = 1;
         while (1) {
-            int ok = fscanf_s(
-                    record,
-                    ITEM_FORMAT_IMPORT,
-                    dummy_item.name,
-                    50,
-                    &dummy_item.time
-                    );
+            int ok = fscanf_s(record, ITEM_FORMAT_IMPORT, title_buffer, MAX_TITLE_LENGHT, &time_buffer);
 
             if (ok == EOF) break;
 
             if (ok != 2) {
-                printf("Malformed file!\n");
+                printf("Malformed record file!\n");
                 fclose(record);
                 return 1;
             }
 
+            printf("%d. %s - %d minutes\n", i, title_buffer, time_buffer);
             i++;
-            printf("%d. %s - %d minutes\n", i, dummy_item.name, dummy_item.time);
         }
         fseek(record, 0, SEEK_SET);
         fclose(record);
     } else if (menu_ui == New) {
-        new_menu(&name_buffer, &name_lenght);
+        get_title_name(&name_buffer, &name_lenght);
         fopen_s(&record, record_path, "a");
 
         fprintf_s(record, ITEM_FORMAT_EXPORT, name_buffer, 0);
@@ -130,13 +127,7 @@ int main() {
 
         int i = 0;
         while (1) {
-            int ok = fscanf_s(
-                    record,
-                    ITEM_FORMAT_IMPORT,
-                    dummy_item.name,
-                    50,
-                    &dummy_item.time
-                    );
+            int ok = fscanf_s(record, ITEM_FORMAT_IMPORT, title_buffer, MAX_TITLE_LENGHT, &time_buffer);
 
             if (ok == EOF) break;
 
@@ -147,13 +138,13 @@ int main() {
             }
 
             i++;
-            printf("%d. %s - %d minutes\n", i, dummy_item.name, dummy_item.time);
+            printf("%d. %s - %d minutes\n", i, title_buffer, time_buffer);
         }
         fclose(record);
 
         // Get ui
         printf("-> ");
-        get_user_menu_input(&menu_ui, i);
+        get_user_menu_input(&menu_ui);
 
         fopen_s(&record, record_path, "r");
         fopen_s(&temp, temp_path, "w");
@@ -165,13 +156,7 @@ int main() {
 
         i = 0;
         while (1) {
-            int ok = fscanf_s(
-                    record,
-                    ITEM_FORMAT_IMPORT,
-                    dummy_item.name,
-                    50,
-                    &dummy_item.time
-                    );
+            int ok = fscanf_s( record, ITEM_FORMAT_IMPORT, title_buffer, MAX_TITLE_LENGHT, &time_buffer);
 
             if (ok == EOF) break;
 
@@ -180,7 +165,7 @@ int main() {
                 continue;
             }
 
-            fprintf_s(temp, ITEM_FORMAT_EXPORT, dummy_item.name, dummy_item.time);
+            fprintf_s(temp, ITEM_FORMAT_EXPORT, title_buffer, time_buffer);
         }
 
         // Close both files
@@ -202,12 +187,12 @@ int main() {
         int i = 0;
         while (1) {
             int ok = fscanf_s(
-                    record,
-                    ITEM_FORMAT_IMPORT,
-                    dummy_item.name,
-                    50,
-                    &dummy_item.time
-                    );
+                record,
+                ITEM_FORMAT_IMPORT,
+                title_buffer,
+                MAX_TITLE_LENGHT,
+                &time_buffer
+            );
 
             if (ok == EOF) break;
 
@@ -219,13 +204,13 @@ int main() {
             }
 
             i++;
-            printf("%d. %s - %d minutes\n", i, dummy_item.name, dummy_item.time);
+            printf("%d. %s - %d minutes\n", i, title_buffer, time_buffer);
         }
         fclose(record);
 
         // Get ui
         printf("-> ");
-        get_user_menu_input(&menu_ui, i);
+        get_user_menu_input(&menu_ui);
 
         // Auto-save timer/watch/clock - every 5 minutes
         fopen_s(&record, record_path, "r+");
@@ -239,24 +224,21 @@ int main() {
             // Reset file pointer
             rewind(record);
             i = 0;
+
             while (1) {
                 long line_pos = ftell(record);
-                fscanf_s(
-                        record,
-                        ITEM_FORMAT_IMPORT,
-                        dummy_item.name,
-                        50,
-                        &dummy_item.time
-                        );
+                fscanf_s( record, ITEM_FORMAT_IMPORT, title_buffer, MAX_TITLE_LENGHT, &time_buffer);
 
                 i++;
                 if (menu_ui == i) {
-                    thrd_sleep(&(struct timespec){.tv_sec=(60 * 5)}, NULL);
-                    dummy_item.time += 5;
-                    printf("%s - %d minutes\n", dummy_item.name, dummy_item.time);
+                    thrd_sleep(&(struct timespec){.tv_sec=(60 * AUTO_SAVE_MINUTES)}, NULL);
+                    time_buffer += AUTO_SAVE_MINUTES;
+
                     fseek(record, line_pos, SEEK_SET);
-                    fprintf_s(record, ITEM_FORMAT_EXPORT, dummy_item.name, dummy_item.time);
-                    fflush(record); // Ensure that the data is written immediately to file
+                    fprintf_s(record, ITEM_FORMAT_EXPORT, title_buffer, time_buffer);
+                    fflush(record);     // Write immediately to file
+
+                    printf("%s - %d minutes\n", title_buffer, time_buffer);
                     break;
                 }
             }
