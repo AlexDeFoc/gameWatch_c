@@ -1,0 +1,4 @@
+Optimise:
+- make clearing screen
+- sleep
+- vars outside funcs (too much initializations!)
