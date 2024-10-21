@@ -291,6 +291,7 @@ void new_option(const char *record_filepath, const char *write_format)
     fflush(record_fptr);
     fclose(record_fptr);
     record_fptr = NULL;
+    free(title);
 }
 
 // Removes a entry from the record file.
