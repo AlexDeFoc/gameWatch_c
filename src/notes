@@ -1,4 +1,106 @@
-Optimise:
-- make clearing screen
-- sleep
-- vars outside funcs (too much initializations!)
+Main flow:
+* list menu opts
+* get ui
+* based on ui run a opt
+
+List menu opt:
+* clear screen
+* make array containing the string opts
+* run through array and print.
+* get user input
+
+New opt:
+* clear screen
+* ask user for title name
+* get user input and store it into title
+* open file ptr to "./record", a
+* write to file ptr with write format and title gathered from user and time = 0.
+* flush file ptr
+* close file ptr
+* null out file ptr
+
+Remove opt:
+* clear screen
+* open file ptr to "./record", r
+* open tmp file ptr to "./tmp", w
+* if record is null print err msg and return
+* (print and get ui phase)
+* while:
+* read line with read format and save it into dummy title, time
+* print each one in i. (title, time)
+* rewind file ptr
+* get user input limited to max of items i we found
+* (remove line phase)
+* while:
+* read line with read format and save it inot dummy title, time
+* write dummy title and time into tmp file ptr with write format.
+* flush tmp ptr
+* close file ptr
+* close tmp file ptr
+* null out file ptr
+* null out tmp file ptr
+* remove file from "./record"
+* rename "./tmp" to "./record"
+
+List opt:
+* clear screen
+* open file ptr to "./record", r
+* if record is null print err msg and return
+* while:
+* read line with read format and save it into dummy title, time
+* print each one in i. (title, time)
+* hold screen
+
+Start opt :
+* clear screen
+* (list titles phase and get ui)
+* open file ptr to "./record", r
+* if record is null print err msg and return
+* while:
+* read line with read format and save it into dummy title, time
+* print each one in i. (title, time)
+* rewind
+* get ui with max based on i val
+* clear screen
+* (sleep & update phase)
+* while 1 :
+* sleep 5 minutes
+* open tmp file ptr, w
+* sub-while :
+* read line with read format and dump data into dummy title and time
+* clear screen
+* print (title, time)
+* write to tmp file ptr with write format the title and time + 5
+* close tmp file ptr
+* null out tmp file ptr
+* remove "./record"
+* rename "./tmp" to "./record"
+
+Start opt :
+* clear screen
+* (list & get ui phase)
+* open file 
+* read file with read format
+* get ui
+* close file
+* (read, write, modify, print & loop phase)
+* while:
+* sleep thread for 5 minutes
+* open file ptr "./record", r
+* open tmp file ptr "./tmp", w
+* read file ptr with read format & write to tmp file ptr with write format
+    * if we reach line i with val same as ui, we write like before but with +5 on time
+    * clear screen
+    * print (title, time)
+* close file ptr
+* close tmp file ptr
+* null out file ptr
+* null out tmp file ptr
+* remove file "./record"
+* rename fiel "./tmp" with "./record"
+
+todo : while reading lines from record check if return val read is 2 if not then print err msg, hold screen and hault
+
+- !note: this flow note was made before writing the main code,
+meaning that there are some safetly and most of the start opt made only in the code and not in the note.
+Conclusion: note is not complete but contains most of the logic.

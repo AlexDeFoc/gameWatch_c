@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30.3)
 
-project("gameWatch")
+project("gameWatch_c")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 11)
