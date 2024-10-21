@@ -21,6 +21,8 @@ It's name resembles a record or a table of names...
 - New - requests the name of the title and adds a new entry to the save file.
 - Remove - removes the entry you select.
 
+## Cross-platform:
+yes. Yes it is. I am only using standard libraries.
 
 ## To exit, just force exit it.
 Reason: Auto-save goes on forever (the main thread sleeps for the duration of the timer which is 5 minutes).
