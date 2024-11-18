@@ -1,2 +1,3 @@
-- Add start phase/pat
+- Add start phase/path
 - Detect when last entry was removed and delete watch file
+- Redo read me?
