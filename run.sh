@@ -1,5 +1,8 @@
 #!/bin/sh
 
-cd build/
-make
+echo "Building..."
+cd build
+ninja
+
+echo "Running..."
 ./app.exe

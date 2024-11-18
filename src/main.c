@@ -1,387 +1,378 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <threads.h>
 
-#define MAIN_OPTIONS_COUNT 4
-#define MAX_TITLE_LENGHT 64
-#define SLEEP_TIMER_MINS 5
+#define GOOD 0
+#define BAD 1
 
-// Utility
-void clear_screen();
-void hold_screen();
+#define MENU_OPTIONS_NR 4
 
-// Entry to main flow.
-int list_menu_options();
+typedef enum menu_options {
+    List = 1, Start, Add, Remove
+} menu_options;
 
-// Options
-void list_option(const char *record_filepath, const char *read_format);
-void start_option(const char *record_filepath, const char *temp_filepath, const char *read_format, const char *write_format);
-void new_option(const char *record_filepath, const char *write_format);
-void remove_option(const char *record_filepath, const char *temp_filepath, const char *read_format, const char *write_format);
-
-int main()
+void print_menu_options (void)
 {
-    enum menu_options {
-        List = 1, Start, New, Remove
-    };
-
-    const char *record_filepath = "./record.txt";
-    const char *temp_filepath = "./tmp.txt";
-
-    const char *read_format = "(%[^,], %d)\n";
-    const char *write_format = "(%s, %d)\n";
-
-    int user_input = 0;
-    while (1) {
-        user_input = list_menu_options();
-
-        if (user_input == List) {
-            list_option(record_filepath, read_format);
-        } else if (user_input == Start) {
-            start_option(record_filepath, temp_filepath, read_format, write_format);
-        } else if (user_input == New) {
-            new_option(record_filepath, write_format);
-        } else if (user_input == Remove) {
-            remove_option(record_filepath, temp_filepath, read_format, write_format);
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-// Clears the screen.
-void clear_screen()
-{
-    printf("\e[1;1H\e[2J");
-}
-
-// Pauses the screen and continues after user pressed any key.
-void hold_screen()
-{
-    getchar();
-}
-
-// Prints the menu options & gets ui to determine next action.
-int list_menu_options()
-{
-    clear_screen();
-
-    const char *options[MAIN_OPTIONS_COUNT] = {
+    // Create menu options.
+    const char * options[MENU_OPTIONS_NR] = {
         "List",
         "Start",
-        "New",
+        "Add",
         "Remove"
     };
 
-    for (int i = 0; i < MAIN_OPTIONS_COUNT; i++) {
+    // Print options.
+    for (uint8_t i = 0; i < MENU_OPTIONS_NR; i++)
         printf("%d. %s\n", i+1, options[i]);
-    }
 
-    int user_input = 0;
-    int received_input_values_count = 0;
-
-    while (1) {
-        printf("->");
-        received_input_values_count = scanf("%d", &user_input);
-
-        if (received_input_values_count == 0) {
-            printf("Invalid input!\n");
-
-            int c = getchar();
-            while (c != '\n' && c != EOF) c = getchar();
-
-            continue;
-        } else if (user_input < 1 || user_input > MAIN_OPTIONS_COUNT) {
-            printf("Out of range!\n");
-
-            int c = getchar();
-            while (c != '\n' && c != EOF) c = getchar();
-
-            continue;
-        }
-
-        break;
-    }
-
-    int c = getchar();
-    while (c != '\n' && c != EOF) c = getchar();
-
-    return user_input;
+    // Exit good.
+    return;
 }
 
-// Lists entries from record file.
-void list_option(const char *record_filepath, const char *read_format)
+uint8_t get_user_menu_choice (uint8_t limit, size_t **return_input)
 {
-    clear_screen();
-
-    FILE *record_fptr = fopen(record_filepath, "r");
-
-    if (record_fptr == NULL) {
-        printf("Record file not found!\n");
-        hold_screen();
-        return;
-    }
-
-    char title[MAX_TITLE_LENGHT+1];
-    int time;
-
-    int received_fields_count = 0;
-    int title_index = 0;
-    while (1) {
-        received_fields_count = fscanf(record_fptr, read_format, title, &time);
-
-        if (received_fields_count == EOF) {
-            break;
-        } else if (received_fields_count != 2) {
-            printf("Line: %d broken\n Must be (title, time)\n", title_index + 1);
-            hold_screen();
-            exit(EXIT_FAILURE);
+    // Create input & default limit.
+    uint8_t input_default_limit = 255;
+    size_t* input = NULL;
+    if (limit == 0) {
+        input = malloc(input_default_limit * sizeof(uint8_t));
+        if (input == NULL) {
+            printf("Out of memory!\n");
+            printf("Cannot allocate enough memory for input!\n");
+            return BAD;
         }
-
-        printf("%d. %s - %d minutes\n", title_index + 1, title, time);
-
-        title_index = title_index + 1;
     }
-
-    fclose(record_fptr);
-    record_fptr = NULL;
-
-    hold_screen();
-}
-
-// Starts a 5 minutes timer and modifies the time value of the selected time, indefinitely.
-void start_option(const char *record_filepath, const char *temp_filepath, const char *read_format, const char *write_format)
-{
-    clear_screen();
-
-    // PRINT TITLES
-    FILE *record_fptr = fopen(record_filepath, "r");
-    if (record_fptr == NULL) {
-        printf("Record file not found!\n");
-        hold_screen();
-        return;
-    }
-
-    char title[MAX_TITLE_LENGHT+1];
-    int time = 0;
-    int received_fields_count = 0;
-    int title_index = 0;
-    while (1) {
-        received_fields_count = fscanf(record_fptr, read_format, title, &time);
-
-        if (received_fields_count == EOF) {
-            break;
-        } else if (received_fields_count != 2) {
-            printf("Line: %d broken\n Must be (title, time)\n", title_index + 1);
-            hold_screen();
-            exit(EXIT_FAILURE);
+    else {
+        input = malloc(limit * sizeof(uint8_t));
+        if (input == NULL) {
+            printf("Out of memory!\n");
+            printf("Cannot allocate enough memory for input!\n");
+            return BAD;
         }
-
-        printf("%d. %s - %d minutes\n", title_index + 1, title, time);
-
-        title_index = title_index + 1;
-    }
-    fclose(record_fptr);
-    record_fptr = NULL;
-
-
-    // GET UI
-    printf("\nWhich title to start?\n");
-    
-    int user_input = 0;
-    int received_input_values_count = 0;
-    while (1) {
-        printf("->");
-        received_input_values_count = scanf("%d", &user_input);
-
-        if (received_input_values_count == 0) {
-            printf("Invalid input!\n");
-
-            int c = getchar();
-            while (c != '\n' && c != EOF) c = getchar();
-
-            continue;
-        } else if (user_input < 1 || user_input > title_index) {
-            printf("Out of range!\n");
-
-            int c = getchar();
-            while (c != '\n' && c != EOF) c = getchar();
-
-            continue;
-        }
-
-        break;
     }
 
-    int c = getchar();
-    while (c != '\n' && c != EOF) c = getchar();
+    // Create lenght.
+    uint8_t lenght = 0;
 
-    // Sleep, read, write/update, remove, rename, loop.
-    struct timespec timer;
-    timer.tv_sec = SLEEP_TIMER_MINS * 60;
-    
-    FILE *temp_fptr = NULL;
+    // Create var for next char.
+    int8_t c = 0;
     while (1) {
-        title_index = 0;
-        thrd_sleep(&timer, NULL);
+        // Get next char.
+        c = getc(stdin);
 
-        record_fptr = fopen(record_filepath, "r");
-        temp_fptr = fopen(temp_filepath, "w");
+        // Break if find end char.
+        if (c == '\n' || c == EOF) break;
 
-        while (1) {
-            received_fields_count = fscanf(record_fptr, read_format, title, &time);
+        // Break if reached user predefined limit.
+        if (limit != 0 && lenght >= limit) break;
 
-            if (received_fields_count == EOF) break;
-
-            if (title_index == user_input - 1) {
-                fprintf(temp_fptr, write_format, title, time + SLEEP_TIMER_MINS);
-                fflush(temp_fptr);
-                clear_screen();
-                printf("(%s, %d minutes)\n", title, time + SLEEP_TIMER_MINS);
-            } else {
-                fprintf(temp_fptr, write_format, title, time);
-                fflush(temp_fptr);
+        // Resize if limit is 0.
+        if (limit == 0 && lenght >= input_default_limit) {
+            size_t* new_input = realloc(input, input_default_limit * 2 * sizeof(uint8_t));
+            if (new_input == NULL) {
+                printf("Out of memory!\n");
+                printf("Cannot allocate enough memory for resizing input!\n");
+                free(input);
+                return BAD;
             }
 
-            title_index = title_index + 1;
+            input = new_input;
+            input_default_limit *= 2;
         }
 
-        fclose(record_fptr);
-        fclose(temp_fptr);
-        record_fptr = NULL;
-        temp_fptr = NULL;
-
-        remove(record_filepath);
-        rename(temp_filepath, record_filepath);
+        // Add char to input. Increment lenght.
+        input[lenght] = c - '0';
+        lenght++;
     }
+
+    // Exit good.
+    *return_input = input;
+    return GOOD;
 }
 
-// Appends new entry with user inputed title & time 0 into record file.
-void new_option(const char *record_filepath, const char *write_format)
+uint8_t get_user_input (uint8_t **return_input)
 {
-    clear_screen();
+    // Create input & default limit.
+    uint8_t limit = 255;
+    uint8_t * input = NULL;
 
-    // Get title phase.
-    char dump[MAX_TITLE_LENGHT+1];
-    printf("Insert title name\n");
-    printf("-> ");
-    
-    int char_read;
-    int title_lenght = 0;
+    input = malloc((limit + 1) * sizeof(uint8_t));
+    if (input == NULL) {
+        printf("Out of memory!\n");
+        printf("Cannot allocate enough memory for input!\n");
+        return BAD;
+    }
+
+    // Create lenght.
+    uint8_t lenght = 0;
+
+    // Create var for next char.
+    int8_t c = 0;
     while (1) {
-        char_read = fgetc(stdin);
-        if (char_read == '\n' || char_read == EOF || title_lenght >= 64) break;
-        dump[title_lenght] = (char)char_read;
-        title_lenght++;
+        // Get next char.
+        c = getc(stdin);
+
+        // Break if find end char.
+        if (c == '\n' || c == EOF) break;
+
+        // Resize if limit reached.
+        if (limit == 0 && lenght >= limit) {
+            uint8_t * new_input = realloc(input, ((limit * 2) + 1) * sizeof(uint8_t));
+            if (new_input == NULL) {
+                printf("Out of memory!\n");
+                printf("Cannot allocate enough memory for resizing input!\n");
+                free(input);
+                return BAD;
+            }
+
+            input = new_input;
+            limit *= 2;
+        }
+
+        // Add char to input. Increment lenght.
+        input[lenght] = c;
+        lenght++;
     }
 
-    char *title = malloc(title_lenght);
-    for (int j = 0; j < title_lenght; j++) {
-        title[j] = dump[j];
-    }
+    // Add null char at end.
+    input[lenght] = '\0';
 
-    title[title_lenght] = '\0';
-
-    // Open & write to file new entry.
-    FILE *record_fptr = fopen(record_filepath, "a");
-    fprintf(record_fptr, write_format, title, 0);
-    fflush(record_fptr);
-    fclose(record_fptr);
-    record_fptr = NULL;
-    free(title);
+    // Exit good.
+    *return_input = input;
+    return GOOD;
 }
 
-// Removes a entry from the record file.
-void remove_option(const char *record_filepath, const char *temp_filepath, const char *read_format, const char *write_format)
+void list_phase (size_t * return_entries_found)
 {
-    clear_screen();
-
-    // PRINT TITLES
-    FILE *record_fptr = fopen(record_filepath, "r");
-    if (record_fptr == NULL) {
-        printf("Record file not found!\n");
-        hold_screen();
+    // Open watch file.
+    FILE *watch_p = fopen("./watch.txt", "r");
+    if (watch_p == NULL) {
+        printf("Watch found not found!\n");
         return;
     }
 
-    char title[MAX_TITLE_LENGHT+1];
-    int time = 0;
-    int received_fields_count = 0;
-    int title_index = 0;
+    // Create read format.
+    const char * format = "(%[^,], %zu)\n";
+
+    // Read loop.
+    uint8_t title[255] = {0};
+    size_t time = 0;
+    size_t entry_index = 1;
+
     while (1) {
-        received_fields_count = fscanf(record_fptr, read_format, title, &time);
+        // Read line.
+        size_t entry_members = fscanf(watch_p, format, title, &time);
 
-        if (received_fields_count == EOF) {
-            break;
-        } else if (received_fields_count != 2) {
-            printf("Line: %d broken\n Must be (title, time)\n", title_index + 1);
-            hold_screen();
-            exit(EXIT_FAILURE);
-        }
+        if (entry_members == EOF) break;
 
-        printf("%d. %s - %d minutes\n", title_index + 1, title, time);
-
-        title_index = title_index + 1;
-    }
-    rewind(record_fptr);
-
-
-    // GET UI
-    printf("\nWhich title to delete?\n");
-    
-    int user_input = 0;
-    int received_input_values_count = 0;
-    while (1) {
-        printf("->");
-        received_input_values_count = scanf("%d", &user_input);
-
-        if (received_input_values_count == 0) {
-            printf("Invalid input!\n");
-
-            int c = getchar();
-            while (c != '\n' && c != EOF) c = getchar();
-
-            continue;
-        } else if (user_input < 1 || user_input > title_index) {
-            printf("Out of range!\n");
-
-            int c = getchar();
-            while (c != '\n' && c != EOF) c = getchar();
-
-            continue;
-        }
-
-        break;
-    }
-
-    int c = getchar();
-    while (c != '\n' && c != EOF) c = getchar();
-
-
-    // READ, COPY & REMOVE SELECTED ENTRY.
-    FILE *temp_fptr = fopen(temp_filepath, "w");
-
-    title_index = 0;
-    while (1) {
-        received_fields_count = fscanf(record_fptr, read_format, title, &time);
-        if (received_fields_count == EOF) {
+        // Check for broken entry.
+        if (entry_members != 2) {
+            printf("Broken entry on line: %zu!\n", entry_index);
             break;
         }
-        
-        if (title_index != user_input - 1) {
-            fprintf(temp_fptr, write_format, title, time);
-            fflush(temp_fptr);
+
+        // Print entry.
+        printf("%zu. %s, %zu\n", entry_index, title, time);
+
+        // Increment entry index.
+        entry_index++;
+    }
+
+    // Return found entries amount. Subtract the last increment
+    if (return_entries_found != NULL)
+        *return_entries_found = entry_index - 1;
+
+    // Exit good.
+    fclose(watch_p);
+    return;
+}
+
+void add_phase (uint8_t * *user_title)
+{
+    // Validate user provided title.
+    if (user_title == NULL) {
+        printf("Invalid user title!\n");
+        return;
+    }
+
+    // Open file.
+    FILE *watch_p = fopen("./watch.txt", "a");
+    if (watch_p == NULL) {
+        printf("Error creating watch file!\n");
+        return;
+    }
+
+    // Create write format.
+    const char * format = "(%s, %zu)";
+
+
+    // Write.
+    size_t time = 0;
+    fprintf(watch_p, format, *user_title, time);
+
+    // Exit good.
+    fclose(watch_p);
+    return;
+}
+
+void remove_phase (size_t * user_choice)
+{
+    // Validate user choice received.
+    if (user_choice == NULL) {
+        printf("Invalid user choice!\n");
+        return;
+    }
+
+    // Open file.
+    FILE *watch_p = fopen("./watch.txt", "r+");
+    if (watch_p == NULL) {
+        printf("Watch file not found!\n");
+        return;
+    }
+    FILE *temp_p = fopen("./temp.txt", "w");
+    if (temp_p == NULL) {
+        printf("Error creating temp file!\n");
+        return;
+    }
+
+    // Create formats.
+    const char * read_format = "(%[^,], %zu)\n";
+    const char * write_format = "(%s, %zu)";
+
+    // Read & copy loop
+    uint8_t title[255] = {0};
+    size_t time = 0;
+    size_t entry_index = 1;
+
+    while (1) {
+        // Read watch file.
+        size_t entry_members = fscanf(watch_p, read_format, title, &time);
+
+        // Check end of file.
+        if (entry_members == EOF) break;
+
+        // Check for broken entry.
+        if (entry_members != 2) {
+            printf("Broken entry on line: %zu!\n", entry_index);
+            break;
         }
 
-        title_index = title_index + 1;
+        // Write entry to temp file. Entries that don't match the user choice.
+        if (entry_index != *user_choice)
+            fprintf(temp_p, write_format, title, time);
+
+        // Increment entry index.
+        entry_index++;
     }
-    fclose(record_fptr);
-    fclose(temp_fptr);
-    record_fptr = NULL;
-    temp_fptr = NULL;
-    remove(record_filepath);
-    rename(temp_filepath, record_filepath);
+
+    // Close file pointers.
+    fclose(watch_p);
+    fclose(temp_p);
+
+    // Remove old watch file.
+    uint8_t error = 0;
+    error = remove("./watch.txt");
+    if (error) {
+        printf("Error renaming watch file!\n");
+        return;
+    }
+
+    // Rename temp to watch file.
+    error = rename("./temp.txt", "./watch.txt");
+    if (error) {
+        printf("Error renaming temp file to watch file!\n");
+        return;
+    }
+    return;
+}
+
+int main(void)
+{
+    // Create error variable.
+    uint8_t error = GOOD;
+
+    // Create menu input.
+    size_t * menu_choice = NULL;
+    uint8_t * menu_input = NULL;
+
+    // Start loop
+    while (1) {
+        // Print menu options
+        print_menu_options();
+
+        // Get user choice.
+        // Repeat if input is invalid. Below 1 or over menu options nr.
+        while (1) {
+            printf("-> ");
+            error = get_user_menu_choice(1, &menu_choice);
+            if (error == BAD) {
+                printf("Failed to get user menu choice!\n");
+                return BAD;
+            }
+            if (*menu_choice < 1 || *menu_choice > MENU_OPTIONS_NR) {
+                printf("Invalid input!\n");
+                continue;
+            }
+
+            // Valid input.
+            break;
+        }
+
+        // Direct user to path based on menu choice.
+        if (*menu_choice == List) {
+            list_phase(NULL);
+        }
+        else if (*menu_choice == Start) {
+            printf("You have chosen the: 'Start' path!\n");
+        }
+        else if (*menu_choice == Add) {
+            // Get user input.
+            printf("-> ");
+            error = get_user_input(&menu_input);
+            if (error == BAD) {
+                printf("Failed to get user input!\n");
+                return BAD;
+            }
+
+            // Pass user inputted title to add phase.
+            add_phase(&menu_input);
+        }
+        else if (*menu_choice == Remove) {
+            // Print entries list. Get entries amount.
+            size_t entries_found = 0;
+            list_phase(&entries_found);
+
+            // Get user menu choice.
+            while (1) {
+                printf("-> ");
+                error = get_user_menu_choice(1, &menu_choice);
+                if (error == BAD) {
+                    printf("Failed to get user menu choice!\n");
+                    return BAD;
+                }
+
+                // Check if we got valid entry index.
+                if (*menu_choice <= 0 || *menu_choice > entries_found) {
+                    printf("Invalid entry index!\n");
+                    continue;
+                }
+
+                // Valid entry index.
+                break;
+            }
+
+            printf("User chosed: %zu\n", *menu_choice);
+            printf("Entries found: %zu\n", entries_found);
+
+            // Pass user choice to remove phase.
+            remove_phase(menu_choice);
+        }
+    }
+
+    // Exit good.
+    free(menu_choice);
+    free(menu_input);
+    return GOOD;
 }
