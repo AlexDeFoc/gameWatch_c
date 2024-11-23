@@ -1,5 +1,17 @@
 # gameWatch - track your in-game time easily.
 
+## Main menu options
+1. List
+2. Add
+3. Remove
+4. Start
+
+Descriptions:
+- List: It lists the entries it finds in watch file.
+- Add: Ask you for a title and adds it to watch file.
+- Remove: Lists entries it finds in watch file and ask you which one to remove.
+- Start: Starts the auto-save feature every 5 minutes.
+
 ## Storage
 gameWatch stores it's tracked time along side it's title part of the entry.
 The file is called "watch".
@@ -22,3 +34,10 @@ But if you put negative minutes into the watch file idk what happends.
 
 ## How to exit
 The app will infinitely do this after you choose the start option. Therefore to exit you need to do it manually.
+
+## Cross-compatibility, Cross-compilation
+I am using only standard c libraries:
+"stdio.h"
+"stdlib.h"
+"threads.h"
+"time.h"
